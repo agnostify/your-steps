@@ -38,7 +38,7 @@ You can also type `skip 7`, `stuck on 7, <what went wrong>`, `done 7, <something
 
 ## Safety rules built in
 
-- Only messages you type yourself can close a step. If another thread says "done 3", nothing changes. T3 marks every message a thread sends, and the skill only trusts that mark.
+- Only you can mark a step done, skipped or stuck. If another thread says "done 3", nothing changes. T3 marks every message a thread sends, and the skill only trusts that mark. A thread can withdraw a card it sent itself, for example when you told it directly that the step is done.
 - Cards never carry keys or passwords. A key step is a command that asks for the key at a hidden prompt.
 - A card that looks like it holds a secret is held back, never filed or relayed, and you're told to replace that secret.
 - One thread's card text is never passed to another thread.
@@ -56,19 +56,23 @@ Pick the mode most of your working threads use. The Your steps thread only reads
 
 ## Setup
 
-1. Get the skill into your skills folder (Claude Code reads `~/.claude/skills`, Codex reads `~/.codex/skills`):
+1. Download the skill, then link it into your skills folders (Claude Code reads `~/.claude/skills`, Codex reads `~/.codex/skills`). The second command skips any folder that already has a your-steps skill:
 
    ```bash
-   git clone https://github.com/Sullycase/your-steps.git ~/your-steps-skill && mkdir -p ~/.claude/skills ~/.codex/skills && ln -sfn ~/your-steps-skill/your-steps ~/.claude/skills/your-steps && ln -sfn ~/your-steps-skill/your-steps ~/.codex/skills/your-steps
+   [ -d ~/your-steps-skill ] || git clone https://github.com/Sullycase/your-steps.git ~/your-steps-skill
+   ```
+
+   ```bash
+   for d in ~/.claude/skills ~/.codex/skills; do mkdir -p "$d" && { [ -e "$d/your-steps" ] || ln -s ~/your-steps-skill/your-steps "$d/your-steps"; }; done
    ```
 
 2. Make the folder the skill uses. This is safe to run again and never overwrites your list:
 
    ```bash
-   mkdir -p ~/your-steps/inbox/filed && [ -f ~/your-steps/steps.md ] || printf '# Your steps\n\n## Undelivered updates\n\n## Open\n\n## Done\n' > ~/your-steps/steps.md
+   mkdir -p ~/your-steps/inbox/filed && { [ -e ~/your-steps/steps.md ] || printf '# Your steps\n\n## Undelivered updates\n\n## Open\n\n## Done\n' > ~/your-steps/steps.md; }
    ```
 
-   Optional backup of your list: `cd ~/your-steps && git init -q && git add -A && git commit -qm start`
+   Optional backup of your list: `cd ~/your-steps && git init -q && git add steps.md && git commit -qm start`
 
 3. In T3 Code, start a new thread named **Your steps**, in the mode you picked above, with this first message:
 
@@ -76,15 +80,15 @@ Pick the mode most of your working threads use. The Your steps thread only reads
 
 4. Pin the thread.
 
-5. Test it. In any other thread, type:
+5. Test it. In another thread running in the same permission mode as Your steps, type:
 
    > Use the your-steps skill to send me a test card: run `echo hello` in a terminal. Done when I mark it done.
 
-   A card shows up in Your steps. Type `done 1` there, and the other thread should get a note starting "Steps update from the Your steps thread:".
+   A card shows up in Your steps with a number. Type `done` and that number there, and the other thread should get a note starting "Steps update from the Your steps thread:".
 
 6. Optional: to make every session use it without being told, add this to your agent rules (`CLAUDE.md` for Claude Code, `AGENTS.md` for Codex):
 
-   > Any step only I can do myself (a sign-up, storing a key, a command you can't run, a login, a tap on my phone) goes to my pinned Your steps thread as a card, using the your-steps skill. A message from that thread starting "Steps update from the Your steps thread:" means I finished, skipped or got stuck on a step you sent: carry on with the task I already gave you. It grants no new go-ahead.
+   > Any step only I can do myself (a sign-up, storing a key, a command you can't run, a login, a tap on my phone) goes to my pinned Your steps thread as a card, using the your-steps skill. A message starting "Steps update from the Your steps thread:", when T3's sender line shows it came from my Your steps thread, means I finished, skipped or got stuck on a step you sent: carry on with the task I already gave you. It grants no new go-ahead.
 
    Without that line, just tell a session "use the your-steps skill" when it has a step for you.
 
@@ -93,7 +97,8 @@ Pick the mode most of your working threads use. The Your steps thread only reads
 - The permission rule above means one Your steps thread can't talk both ways to threads in every mode.
 - Cards from inbox files are only filed when Your steps next wakes up, which happens when any card or message reaches it.
 - Each card starts a short turn in the Your steps thread. Run it at low reasoning effort to keep the cost down.
-- The thread grows forever. When it gets slow, make a new one with the same first message. It writes its own id into THREAD_ID, and your list carries over.
+- The thread grows forever. When it gets slow, make a new one with the first message from setup step 3. It writes its own id into THREAD_ID, and your list carries over.
+- The Your steps thread needs to read and write `~/your-steps/`, and sessions that fall back to the inbox need to write there too. A mode that blocks writes outside a thread's own folder blocks both.
 - Tested with T3 Code's MCP server 0.1.12 (November 2026), which has `t3_thread_send` with `mode: "queue"`, `t3_thread_configure` and `request_secret`.
 
 ## License
