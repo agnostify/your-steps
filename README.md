@@ -59,7 +59,7 @@ Pick the mode most of your working threads use. The Your steps thread only reads
 1. Download the skill, then link it into your skills folders (Claude Code reads `~/.claude/skills`, Codex reads `~/.codex/skills`). The second command skips any folder that already has a your-steps skill:
 
    ```bash
-   [ -d ~/your-steps-skill ] || git clone https://github.com/Sullycase/your-steps.git ~/your-steps-skill
+   [ -d ~/your-steps-skill ] || git clone https://github.com/agnostify/your-steps.git ~/your-steps-skill
    ```
 
    ```bash
